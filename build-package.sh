@@ -392,6 +392,7 @@ _show_usage() {
 	echo "  -s Skip dependency check."
 	echo "  -o Specify directory where to put built packages. Default: output/."
 	echo "  --format Specify package output format (debian, pacman)."
+	echo "  --library Specify library of package (bionic, glibc)."
 	exit 1
 }
 
@@ -411,6 +412,17 @@ while (($# >= 1)); do
 				export TERMUX_PACKAGE_FORMAT="$1"
 			else
 				termux_error_exit "./build-package.sh: option '--format' requires an argument"
+			fi
+			;;
+		--library)
+			if [ $# -ge 2 ]; then
+				shift
+				if [ -z "$1" ]; then
+					termux_error_exit "./build-package.sh: argument to '--library' should not be empty"
+				fi
+				export TERMUX_PACKAGE_LIBRARY="$1"
+			else
+				termux_error_exit "./build-package.sh: option '--library' requires an argument"
 			fi
 			;;
 		-a)
@@ -481,6 +493,13 @@ if [ -n "${TERMUX_PACKAGE_FORMAT-}" ]; then
 	case "${TERMUX_PACKAGE_FORMAT-}" in
 		debian|pacman) :;;
 		*) termux_error_exit "Unsupported package format \"${TERMUX_PACKAGE_FORMAT-}\". Only 'debian' and 'pacman' formats are supported";;
+	esac
+fi
+
+if [ -n "${TERMUX_PACKAGE_LIBRARY-}" ]; then
+	case "${TERMUX_PACKAGE_LIBRARY-}" in
+		bionic|glibc) :;;
+		*) termux_error_exit "Unsupported library \"${TERMUX_PACKAGE_LIBRARY-}\". Only 'bionic' and 'glibc' library are supported";;
 	esac
 fi
 

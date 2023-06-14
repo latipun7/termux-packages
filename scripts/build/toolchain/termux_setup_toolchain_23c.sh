@@ -3,18 +3,33 @@ termux_setup_toolchain_23c() {
 	export CPPFLAGS=""
 	export LDFLAGS="-L${TERMUX_PREFIX}/lib"
 
-	export AS=$TERMUX_HOST_PLATFORM-clang
-	export CC=$TERMUX_HOST_PLATFORM-clang
-	export CXX=$TERMUX_HOST_PLATFORM-clang++
-	export CPP=$TERMUX_HOST_PLATFORM-cpp
-	export LD=ld.lld
-	export AR=llvm-ar
-	export OBJCOPY=llvm-objcopy
-	export OBJDUMP=llvm-objdump
-	export RANLIB=llvm-ranlib
-	export READELF=llvm-readelf
-	export STRIP=llvm-strip
-	export NM=llvm-nm
+	if [ "$TERMUX_PACKAGE_LIBRARY" = "bionic" ]; then
+		export AS=$TERMUX_HOST_PLATFORM-clang
+		export CC=$TERMUX_HOST_PLATFORM-clang
+		export CXX=$TERMUX_HOST_PLATFORM-clang++
+		export CPP=$TERMUX_HOST_PLATFORM-cpp
+		export LD=ld.lld
+		export AR=llvm-ar
+		export OBJCOPY=llvm-objcopy
+		export OBJDUMP=llvm-objdump
+		export RANLIB=llvm-ranlib
+		export READELF=llvm-readelf
+		export STRIP=llvm-strip
+		export NM=llvm-nm
+	else
+		export AS=${TERMUX_ARCH}-unknown-linux-gnu-gcc
+		export CC=${TERMUX_ARCH}-unknown-linux-gnu-gcc
+		export CXX=${TERMUX_ARCH}-unknown-linux-gnu-g++
+		export CPP=${TERMUX_ARCH}-unknown-linux-gnu-c++
+		export LD=ld.bfd
+		export AR=ar
+		export OBJCOPY=objcopy
+		export OBJDUMP=objdump
+		export RANLIB=ranlib
+		export READELF=readelf
+		export STRIP=strip
+		export NM=nm
+	fi
 
 	export TERMUX_HASKELL_OPTIMISATION="-O"
 	if [ "${TERMUX_DEBUG_BUILD}" = true ]; then
@@ -66,7 +81,9 @@ termux_setup_toolchain_23c() {
 	# -static-openmp requires -fopenmp in LDFLAGS to work; hopefully this won't be problematic
 	# even when we don't have -fopenmp in CFLAGS / when we don't want to enable OpenMP
 	# We might also want to consider shipping libomp.so instead; since r21
-	LDFLAGS+=" -fopenmp -static-openmp"
+	if [ "$TERMUX_PACKAGE_LIBRARY" = "bionic" ]; then
+		LDFLAGS+=" -fopenmp -static-openmp"
+	fi
 
 	# Android 7 started to support DT_RUNPATH (but not DT_RPATH).
 	LDFLAGS+=" -Wl,--enable-new-dtags"

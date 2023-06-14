@@ -28,15 +28,34 @@ termux_step_setup_variables() {
 		*) termux_error_exit "Unsupported package format \"${TERMUX_PACKAGE_FORMAT-}\". Only 'debian' and 'pacman' formats are supported";;
 	esac
 
+	# Default package library base
+	if [ -z "${TERMUX_PACKAGE_LIBRARY-}" ]; then
+		export TERMUX_PACKAGE_LIBRARY="bionic"
+	fi
+
+	if [ "$TERMUX_PACKAGE_LIBRARY" = "glibc" ]; then
+		export TERMUX_PREFIX="${TERMUX_PREFIX}/glibc"
+		if [ "$TERMUX_ON_DEVICE_BUILD" = "true" ]; then
+			export PATH="${TERMUX_PREFIX}/bin:${PATH}"
+			unset LD_PRELOAD
+		fi
+	fi
+
+	if [ "$TERMUX_PACKAGE_LIBRARY" = "glibc" ]; then
+		TERMUX_PKG_NAME="${TERMUX_PKG_NAME}-glibc"
+	fi
+
 	if [ "$TERMUX_ON_DEVICE_BUILD" = "true" ]; then
 		# For on-device builds cross-compiling is not supported so we can
 		# store information about built packages under $TERMUX_TOPDIR.
 		TERMUX_BUILT_PACKAGES_DIRECTORY="$TERMUX_TOPDIR/.built-packages"
 		TERMUX_NO_CLEAN="true"
 
-		# On-device builds without termux-exec are unsupported.
-		if ! grep -q "${TERMUX_PREFIX}/lib/libtermux-exec.so" <<< "${LD_PRELOAD-x}"; then
-			termux_error_exit "On-device builds without termux-exec are not supported."
+		if [ "$TERMUX_PACKAGE_LIBRARY" = "bionic" ]; then
+			# On-device builds without termux-exec are unsupported.
+			if ! grep -q "${TERMUX_PREFIX}/lib/libtermux-exec.so" <<< "${LD_PRELOAD-x}"; then
+				termux_error_exit "On-device builds without termux-exec are not supported."
+			fi
 		fi
 	else
 		TERMUX_BUILT_PACKAGES_DIRECTORY="/data/data/.built-packages"
@@ -51,8 +70,13 @@ termux_step_setup_variables() {
 		TERMUX_ARCH_BITS=32
 	fi
 
-	TERMUX_HOST_PLATFORM="${TERMUX_ARCH}-linux-android"
-	if [ "$TERMUX_ARCH" = "arm" ]; then TERMUX_HOST_PLATFORM="${TERMUX_HOST_PLATFORM}eabi"; fi
+	if [ "$TERMUX_PACKAGE_LIBRARY" = "bionic" ]; then
+		TERMUX_HOST_PLATFORM="${TERMUX_ARCH}-linux-android"
+		if [ "$TERMUX_ARCH" = "arm" ]; then TERMUX_HOST_PLATFORM="${TERMUX_HOST_PLATFORM}eabi"; fi
+	else
+		TERMUX_HOST_PLATFORM="${TERMUX_ARCH}-linux-gnu"
+		if [ "$TERMUX_ARCH" = "arm" ]; then TERMUX_HOST_PLATFORM="${TERMUX_HOST_PLATFORM}eabihf"; fi
+	fi
 
 	if [ "$TERMUX_ON_DEVICE_BUILD" = "false" ] && [ ! -d "$NDK" ]; then
 		termux_error_exit 'NDK not pointing at a directory!'
